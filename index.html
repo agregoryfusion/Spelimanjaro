@@ -88,6 +88,24 @@
       background: rgba(80, 139, 255, 0.15);
       box-shadow: inset 0 0 0 1px rgba(110, 182, 255, 0.4);
     }
+    #question span.active {
+      border: 2px solid #facc15;
+      background: rgba(250, 204, 21, 0.15);
+      box-shadow: 0 0 12px rgba(250, 204, 21, 0.4);
+    }
+    #question span.filled {
+      background: rgba(74, 222, 128, 0.2);
+      color: var(--success);
+      font-weight: 600;
+      box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.45);
+    }
+    #question span.wrong {
+      animation: wrongFlash .3s ease;
+    }
+    @keyframes wrongFlash {
+      0% { background: rgba(255, 106, 106, 0.7); }
+      100% { background: var(--panel-soft); }
+    }
     #hint { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 18px; }
 
     #timerBar {
@@ -122,6 +140,17 @@
     }
     #answer:focus { border-color: rgba(110,182,255,0.75); box-shadow: 0 0 0 6px rgba(110,182,255,0.18); }
     #answer::placeholder { color: rgba(255,255,255,0.25); }
+
+    #game-container.shake {
+      animation: shake .4s ease;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-10px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(4px); }
+    }
 
     #controls {
       display: flex;
@@ -224,9 +253,9 @@
     <div id="question"></div>
     <div id="hint"></div>
     <div id="timerBar"><div id="timerFill"></div></div>
-    <input id="answer" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type the full word" />
+    <input id="answer" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type the next letter" />
     <div id="controls">
-      <button id="submitBtn" class="action">Submit</button>
+      <button id="submitBtn" class="action" style="display: none;">Submit</button>
       <button id="skipBtn" class="action secondary">Skip word</button>
     </div>
     <div id="feedback"></div>
@@ -537,18 +566,21 @@
         const idx = Math.floor(Math.random() * len);
         indices.add(idx);
       }
+      const blankIndices = [];
       const maskHtml = letters.map((ch, idx) => {
         const span = document.createElement("span");
+        span.dataset.index = idx;
         if (indices.has(idx)) {
           span.textContent = ch.toUpperCase();
           span.classList.add("revealed");
         } else {
           span.textContent = "";
+          blankIndices.push(idx);
         }
         return span;
       });
       const maskedString = letters.map((ch, idx) => indices.has(idx) ? ch : "_").join("");
-      return { maskHtml, maskIndices: indices, maskedString };
+      return { maskHtml, maskIndices: indices, maskedString, blankIndices };
     }
 
     function matchingWordsForMask(baseWord, mask) {
@@ -562,6 +594,37 @@
     function renderMask(mask) {
       questionEl.innerHTML = "";
       mask.maskHtml.forEach(span => questionEl.appendChild(span));
+    }
+
+    function clearActiveHighlight() {
+      if (!current?.mask?.maskHtml) return;
+      current.mask.maskHtml.forEach(span => span.classList.remove("active"));
+    }
+
+    function highlightActiveBlank() {
+      if (!current) return;
+      clearActiveHighlight();
+      const blankIndices = current.blankIndices;
+      if (!blankIndices?.length) return;
+      const idx = blankIndices[current.blankProgress] ?? null;
+      if (idx == null) return;
+      const span = current.mask.maskHtml[idx];
+      if (span) span.classList.add("active");
+    }
+
+    function triggerShake() {
+      gameContainer.classList.remove("shake");
+      void gameContainer.offsetWidth;
+      gameContainer.classList.add("shake");
+      setTimeout(() => gameContainer.classList.remove("shake"), 400);
+    }
+
+    function refreshMaskedString() {
+      if (!current) return;
+      const letters = current.word.split("");
+      const indices = current.mask?.maskIndices;
+      if (!indices) return;
+      current.mask.maskedString = letters.map((ch, i) => indices.has(i) ? ch : "_").join("");
     }
 
     function updateStats() {
@@ -588,7 +651,7 @@
       const lengthHint = word ? `• ${word.length} letters` : "";
       const blanksHint = blanks ? `• ${blanks} blank${blanks === 1 ? "" : "s"}` : "";
       stageInfo.textContent = `${displayStage} ${diff} ${lengthHint} ${blanksHint} ${progressLabel}`.trim();
-      hintEl.textContent = word ? "Type the full word. Revealed letters are shown in blue." : "";
+      hintEl.textContent = word ? "Type the highlighted letter to build the word." : "";
     }
 
     function updateTimerVisual() {
@@ -654,12 +717,14 @@
         mask,
         validSolutions: new Set(validSolutions),
         acceptedWord: null,
-        penaltySecondsThisQuestion: 0
+        penaltySecondsThisQuestion: 0,
+        blankIndices: mask.blankIndices.slice(),
+        blankProgress: 0
       };
       feedbackEl.textContent = "";
       feedbackEl.className = "";
       answerEl.value = "";
-      answerEl.setAttribute("maxlength", choice.word.length);
+      answerEl.setAttribute("maxlength", 1);
       answerEl.focus();
       mistakesThisQuestion = 0;
       loggedThisQuestion = false;
@@ -667,6 +732,7 @@
       updateTimerVisual();
       qStartTs = performance.now();
       updateStageInfo(choice.word, choice.zipf, mask);
+      highlightActiveBlank();
       scheduleTick();
     }
     function finalizeQuestion(success, { timeout = false, skipped = false } = {}) {
@@ -674,6 +740,7 @@
       loggedThisQuestion = true;
       cancelAnimationFrame(rafId);
       const finished = current;
+      clearActiveHighlight();
       const solvedWord = finished.acceptedWord || finished.word;
       const elapsed = (performance.now() - qStartTs) / 1000;
       totalTimeTrue += elapsed;
@@ -732,6 +799,9 @@
 
     function checkAnswer() {
       if (!current || loggedThisQuestion) return;
+      const blanks = current.blankIndices;
+      if (!blanks || !blanks.length) {
+        current.acceptedWord = current.word;
       const raw = answerEl.value;
       const lettersOnly = raw.replace(/[^a-zA-Z]/g, "");
       if (lettersOnly.length !== current.word.length) return;
@@ -740,7 +810,44 @@
       if (isValid) {
         current.acceptedWord = guess;
         finalizeQuestion(true);
+        return;
+      }
+      const raw = answerEl.value;
+      const lettersOnly = raw.replace(/[^a-zA-Z]/g, "");
+      if (!lettersOnly) {
+        answerEl.value = "";
+        return;
+      }
+      const attemptChar = lettersOnly[0].toLowerCase();
+      answerEl.value = lettersOnly[0].toUpperCase();
+      const targetIdx = blanks[current.blankProgress];
+      if (targetIdx == null) return;
+      const correctChar = current.word[targetIdx];
+      const targetSpan = current.mask.maskHtml[targetIdx];
+      if (attemptChar === correctChar) {
+        current.mask.maskIndices.add(targetIdx);
+        if (targetSpan) {
+          targetSpan.textContent = correctChar.toUpperCase();
+          targetSpan.classList.remove("wrong");
+          targetSpan.classList.add("filled");
+        }
+        refreshMaskedString();
+        current.blankProgress += 1;
+        answerEl.value = "";
+        feedbackEl.textContent = "";
+        feedbackEl.className = "";
+        if (current.blankProgress >= blanks.length) {
+          current.acceptedWord = current.word;
+          finalizeQuestion(true);
+        } else {
+          highlightActiveBlank();
+        }
       } else {
+        if (targetSpan) {
+          targetSpan.classList.add("wrong");
+          setTimeout(() => targetSpan.classList.remove("wrong"), 260);
+        }
+        triggerShake();
         mistakesThisQuestion++;
         applyPenalty();
       }
@@ -914,19 +1021,23 @@
       }
     });
     answerEl.addEventListener("input", () => {
-      if (!current || loggedThisQuestion) return;
-      const raw = answerEl.value;
-      const lettersOnly = raw.replace(/[^a-zA-Z]/g, "");
-      const normalized = lettersOnly.toUpperCase();
-      if (normalized !== raw) {
-        answerEl.value = normalized;
+      if (!current || loggedThisQuestion) {
+        answerEl.value = "";
+        return;
       }
-      if (!current) return;
-      const targetLength = current.word.length;
-      if (normalized.length >= targetLength) {
-        answerEl.value = normalized.slice(0, targetLength);
-        checkAnswer();
+      let letter = answerEl.value.replace(/[^a-zA-Z]/g, "");
+      if (letter.length > 1) {
+        letter = letter.slice(-1);
       }
+      if (!letter) {
+        answerEl.value = "";
+        return;
+      }
+      const upper = letter.toUpperCase();
+      if (answerEl.value !== upper) {
+        answerEl.value = upper;
+      }
+      checkAnswer();
     });
     restartBtn.addEventListener("click", () => {
       startGame().catch(err => console.error(err));

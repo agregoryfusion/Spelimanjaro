@@ -1,322 +1,874 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Spelimanjaro</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
-      --bg: #0f1220;
-      --card: #171a2b;
-      --ink: #e8ecff;
-      --muted: #9aa3c7;
-      --accent: #6ea8fe;
-      --good: #4ade80;
-      --bad: #f87171;
-      --warn: #fbbf24;
+      --bg: #0b0d16;
+      --panel: #151926;
+      --panel-soft: #1c2133;
+      --text: #f1f5ff;
+      --muted: #9aa7c4;
+      --accent: #6ab6ff;
+      --accent2: #4f7bff;
+      --danger: #ff6a6a;
+      --success: #4ade80;
     }
-    html, body { height: 100%; margin: 0; }
+    * { box-sizing: border-box; }
     body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      background: radial-gradient(1000px 1000px at 10% 0%, #121634, #0b0e1a);
-      color: var(--ink);
-      display: grid; place-items: center;
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+      background: radial-gradient(circle at top left, #141a33, #090b12 70%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    .wrap { width: min(960px, 92vw); }
-    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-    .topbar { justify-content: space-between; margin-bottom: 14px; }
-    .card {
-      background: var(--card); border-radius: 14px; padding: 16px 18px;
-      box-shadow: 0 8px 24px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
+    h1 { margin-top: 40px; margin-bottom: 4px; font-size: clamp(32px, 5vw, 48px); color: var(--accent); }
+    #version { color: var(--muted); margin-bottom: 28px; }
+
+    #login-screen {
+      min-height: 40vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      text-align: center;
     }
-    h1 { font-size: 26px; margin: 0 0 4px; }
-    .sub { color: var(--muted); font-size: 14px; }
-    .timer {
-      height: 14px; background: #121528; border-radius: 999px; overflow: hidden;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    #loginBtn {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      border-radius: 8px;
+      padding: 12px 22px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform .15s ease, box-shadow .15s ease;
     }
-    .timer > .bar {
-      height: 100%; width: 100%;
-      background: linear-gradient(90deg, var(--good), var(--accent));
-      transition: width .2s ease-out;
+    #loginBtn:hover { transform: translateY(-1px); box-shadow: 0 10px 25px rgba(74, 123, 255, 0.35); }
+    #loginStatus { color: var(--danger); font-size: 14px; }
+
+    #game-container {
+      display: none;
+      width: min(960px, 92vw);
+      background: var(--panel);
+      border-radius: 18px;
+      padding: 28px 26px 34px;
+      box-shadow: 0 18px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05);
     }
-    .big {
-      font-size: clamp(28px, 6vw, 48px);
-      letter-spacing: 2px; text-align: center;
-      padding: 24px 12px; margin: 10px 0;
-      border-radius: 12px; background: #121528;
-      user-select: none;
+    #question {
+      font-size: clamp(32px, 6vw, 52px);
+      font-weight: 700;
+      text-align: center;
+      margin-top: 26px;
+      margin-bottom: 12px;
+      min-height: 1.6em;
+      letter-spacing: 0.16em;
+      display: flex;
+      justify-content: center;
+      gap: 14px;
     }
-    .masked span { display: inline-block; min-width: 0.75ch; border-bottom: 2px dashed rgba(255,255,255,.18); }
-    input[type="text"] {
-      width: 100%; padding: 16px 14px; border-radius: 10px; font-size: 20px;
-      border: 1px solid rgba(255,255,255,.08); background: #0d1022; color: var(--ink);
+    #question span {
+      display: inline-flex;
+      width: clamp(28px, 5vw, 36px);
+      height: clamp(40px, 7vw, 52px);
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: var(--panel-soft);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+    }
+    #question span.revealed {
+      color: var(--accent);
+      font-weight: 600;
+      background: rgba(80, 139, 255, 0.15);
+      box-shadow: inset 0 0 0 1px rgba(110, 182, 255, 0.4);
+    }
+    #hint { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+
+    #timerBar {
+      width: 70%;
+      height: 28px;
+      background: #1b2133;
+      border-radius: 18px;
+      margin: 0 auto 26px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 10px 22px rgba(0,0,0,0.45);
+    }
+    #timerFill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width .16s ease-out;
+    }
+
+    #answer {
+      display: block;
+      width: 60%;
+      margin: 0 auto;
+      font-size: 24px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.08);
+      background: #0d111f;
+      color: var(--text);
+      text-align: center;
       outline: none;
+      caret-color: var(--accent);
     }
-    input[type="text"]:focus {
-      border-color: rgba(110,168,254,.6); box-shadow: 0 0 0 4px rgba(110,168,254,.15);
+    #answer:focus { border-color: rgba(110,182,255,0.75); box-shadow: 0 0 0 6px rgba(110,182,255,0.18); }
+    #answer::placeholder { color: rgba(255,255,255,0.25); }
+
+    #controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 16px;
     }
-    .btn {
-      padding: 10px 14px; border-radius: 10px; border: 0; color: white; background: var(--accent);
-      font-weight: 600; cursor: pointer;
+    button.action {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      padding: 10px 18px;
+      font-size: 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .15s ease, transform .15s ease;
     }
-    .btn.secondary { background: #2a2f52; }
-    .btn.danger { background: var(--bad); }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas; }
-    .pill { background: #121528; border-radius: 999px; padding: 6px 10px; font-size: 12px; color: var(--muted); }
-    .stat { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 14px; }
-    .stat b { color: var(--ink); }
-    .footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 8px; }
-    .good { color: var(--good); }
-    .bad { color: var(--bad); }
-    .warn { color: var(--warn); }
-    #gameOver {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.7);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 1000;
+    button.action:hover { transform: translateY(-1px); }
+    button.secondary { background: #2a3250; }
+
+    #feedback { text-align: center; font-size: 15px; margin-top: 12px; min-height: 1.4em; }
+    #feedback.ok { color: var(--success); }
+    #feedback.bad { color: var(--danger); }
+
+    #stage-info {
+      margin-top: 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 15px;
     }
-    #gameOver .panel {
-      background: var(--card); padding: 24px 28px;
-      border-radius: 12px; text-align: center;
-      width: min(400px, 90vw);
+
+    #stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-top: 30px;
+    }
+    .stat-box {
+      background: var(--panel-soft);
+      border-radius: 12px;
+      padding: 16px 18px;
+      text-align: center;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .stat-box .label { color: var(--muted); font-size: 13px; letter-spacing: .05em; text-transform: uppercase; }
+    .stat-box .value { font-size: 26px; font-weight: 600; margin-top: 6px; }
+
+    #end-screen {
+      display: none;
+      text-align: center;
+      margin-top: 60px;
+      color: var(--text);
+    }
+    #end-screen h3 { color: var(--danger); font-size: 32px; margin-bottom: 6px; }
+    #end-screen p { margin: 8px 0; font-size: 17px; }
+    #end-screen button { background: var(--accent); border: none; color: #fff; padding: 12px 20px; font-size: 16px; border-radius: 10px; cursor: pointer; }
+
+    #leaderboardButtons { display: flex; gap: 12px; justify-content: center; margin-top: 22px; }
+    #leaderboardButtons button { background: #1f2538; border: none; color: var(--text); padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 14px; }
+    #leaderboardButtons button.active { background: var(--accent); }
+
+    #leaderboardContainer {
+      display: none;
+      margin: 40px auto 30px;
+      max-width: 820px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity .3s;
+    }
+    #leaderboardContainer.show { opacity: 1; }
+    #leaderboardContainer table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    #leaderboardContainer th, #leaderboardContainer td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-size: 15px;
+    }
+    #leaderboardContainer th { color: var(--accent); text-transform: uppercase; font-size: 13px; letter-spacing: .08em; }
+    #leaderboardStatus { color: var(--muted); font-size: 14px; }
+
+    @media (max-width: 720px) {
+      #answer { width: 100%; }
+      #question { gap: 6px; }
+      #question span { width: 30px; }
+      #timerBar { width: 100%; }
     }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="row topbar">
-    <div>
-      <h1>Spelimanjaro</h1>
-      <div class="sub">Climb the mountain of Spelling</div>
-      <div class="sub">v1.0.1</div>
+  <h1>Spelimanjaro</h1>
+  <p id="version">v1.0.0</p>
+
+  <div id="login-screen">
+    <p style="color: var(--muted);">Sign in with your Microsoft account to begin your spelling ascent.</p>
+    <button id="loginBtn">Sign in with Microsoft</button>
+    <div id="loginStatus"></div>
+  </div>
+
+  <div id="game-container">
+    <div id="question"></div>
+    <div id="hint"></div>
+    <div id="timerBar"><div id="timerFill"></div></div>
+    <input id="answer" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type the full word" />
+    <div id="controls">
+      <button id="submitBtn" class="action">Submit</button>
+      <button id="skipBtn" class="action secondary">Skip word</button>
     </div>
-    <div class="row">
-      <span class="pill mono" id="stagePill">Stage 1</span>
-      <span class="pill mono" id="streakPill">Streak 0</span>
-      <span class="pill mono" id="scorePill">Score 0</span>
+    <div id="feedback"></div>
+    <div id="stage-info"></div>
+
+    <div id="stats">
+      <div class="stat-box"><div class="label">Words spelled</div><div class="value" id="statCorrect">0</div></div>
+      <div class="stat-box"><div class="label">Mistakes</div><div class="value" id="statMistakes">0</div></div>
+      <div class="stat-box"><div class="label">Avg time</div><div class="value" id="statAvg">—</div></div>
+      <div class="stat-box"><div class="label">Current streak</div><div class="value" id="statStreak">0</div></div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="row" style="gap:14px; align-items:center; margin-bottom:8px;">
-      <div style="flex:1">
-        <div class="timer"><div class="bar" id="timerBar"></div></div>
-      </div>
-      <div class="mono" id="timeLeftLabel">60.0s</div>
+  <div id="end-screen">
+    <h3>Game Over</h3>
+    <p id="end-summary"></p>
+    <p id="end-time"></p>
+    <p id="end-avg"></p>
+    <p id="end-session"></p>
+    <p id="saved-status"></p>
+    <button id="restartBtn">Play again</button>
+
+    <div id="leaderboardButtons">
+      <button id="viewAllBtn" class="active">Everyone</button>
+      <button id="viewStudentsBtn">Students</button>
+      <button id="viewTeachersBtn">Teachers</button>
     </div>
 
-    <div class="big masked" id="maskedWord">_ _ _ _</div>
-
-    <div class="grid">
-      <div class="card" style="background:#0f1330">
-        <div class="sub" style="margin-bottom:6px;">Type the missing letters</div>
-        <input id="answerInput" type="text" autocomplete="off" placeholder="type full word…" />
-        <div class="row" style="margin-top:10px; justify-content: space-between;">
-          <div class="sub"><span id="feedback" class="mono"></span></div>
-          <div class="row">
-            <button class="btn" id="btnSubmit">Submit</button>
-            <button class="btn secondary" id="btnSkip">Skip (-3s)</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="background:#0f1330">
-        <div class="stat">
-          <div>Correct:</div><b id="statCorrect">0</b>
-          <div>Mistakes:</div><b id="statMistakes">0</b>
-          <div>Average time:</div><b id="statAvg">—</b>
-          <div>Leaderboard:</div><b><span id="leaderboardLink" class="sub">Leaderboard Spelimanjaro</span></b>
-        </div>
-        <div class="row" style="margin-top:10px; justify-content: space-between;">
-          <div class="row">
-            <button class="btn" id="btnStart">Start</button>
-            <button class="btn danger" id="btnEnd">End</button>
-          </div>
-        </div>
-      </div>
+    <div id="leaderboardContainer">
+      <p id="leaderboardStatus"></p>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>Words</th>
+            <th>Time (s)</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
-  <div class="footer">Keys saved as <b>Session Spelimanjaro</b> and <b>Leaderboard Spelimanjaro</b></div>
-</div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+    import {
+      getAuth, OAuthProvider, signInWithPopup,
+      setPersistence, browserLocalPersistence, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+    import {
+      getFirestore, collection, doc, setDoc, addDoc,
+      getDocs, query, orderBy, limit
+    } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-<div id="gameOver" class="hidden">
-  <div class="panel">
-    <h2>Game Over!</h2>
-    <p id="loseWord"></p>
-    <p id="loseDef" class="sub"></p>
-    <button class="btn" id="btnRestart">Play Again</button>
-  </div>
-</div>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBUaOrUckCuTrc9MHB9jCF4TUsx-hWFC7g",
+      authDomain: "ironmath-1263b.firebaseapp.com",
+      projectId: "ironmath-1263b",
+      storageBucket: "ironmath-1263b.firebasestorage.app",
+      messagingSenderId: "729878130193",
+      appId: "1:729878130193:web:f4d447b552e4f955f80bb0",
+      measurementId: "G-0VCM7C1HPC"
+    };
 
-<script>
-let WORDS = []; // { word, definition }
-async function loadWords() {
-  const res = await fetch("words.csv");
-  const text = await res.text();
-  const lines = text.split("\n").filter(x=>x.trim().length>0);
-  WORDS = lines.map(l=>{
-    const [w, def] = l.split(/,(.+)/); // split only on first comma
-    return { word:w.trim().toLowerCase(), def:(def||"").trim() };
-  }).filter(x=>x.word && /^[a-z]+$/.test(x.word));
-  console.log("Loaded", WORDS.length, "words");
-}
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new OAuthProvider("microsoft.com");
+    await setPersistence(auth, browserLocalPersistence);
 
-const START_TIME_SECONDS = 60;
-const CORRECT_BONUS = 1.5;
-const MISTAKE_PENALTY = 3.0;
-const SKIP_PENALTY = 3.0;
+    const loginScreen = document.getElementById("login-screen");
+    const loginBtn = document.getElementById("loginBtn");
+    const loginStatus = document.getElementById("loginStatus");
+    const gameContainer = document.getElementById("game-container");
+    const endScreen = document.getElementById("end-screen");
+    const questionEl = document.getElementById("question");
+    const hintEl = document.getElementById("hint");
+    const answerEl = document.getElementById("answer");
+    const submitBtn = document.getElementById("submitBtn");
+    const skipBtn = document.getElementById("skipBtn");
+    const feedbackEl = document.getElementById("feedback");
+    const timerFill = document.getElementById("timerFill");
+    const stageInfo = document.getElementById("stage-info");
+    const statCorrect = document.getElementById("statCorrect");
+    const statMistakes = document.getElementById("statMistakes");
+    const statAvg = document.getElementById("statAvg");
+    const statStreak = document.getElementById("statStreak");
+    const endSummary = document.getElementById("end-summary");
+    const endTime = document.getElementById("end-time");
+    const endAvg = document.getElementById("end-avg");
+    const endSession = document.getElementById("end-session");
+    const restartBtn = document.getElementById("restartBtn");
+    const savedStatus = document.getElementById("saved-status");
+    const viewAllBtn = document.getElementById("viewAllBtn");
+    const viewStudentsBtn = document.getElementById("viewStudentsBtn");
+    const viewTeachersBtn = document.getElementById("viewTeachersBtn");
+    const lbWrap = document.getElementById("leaderboardContainer");
+    const lbStatus = document.getElementById("leaderboardStatus");
+    const lbBody = document.querySelector("#leaderboardContainer tbody");
 
-let state = {
-  running:false, timeLeft:START_TIME_SECONDS,
-  stage:1, streak:0, score:0, correct:0, mistakes:0,
-  answers:[], current:null, startTs:null, timer:null
-};
+    const WORDS_URL = "words.min.json";
+    const START_STAGE = 1;
+    const TIMER_SECONDS = 14;
+    const STAGE_STEP = 3;
+    const BASE_PENALTY = 1.5;
+    const PENALTY_MULT = 1.7;
+    const SKIP_PENALTY = 3;
+    const DUPLICATE_PROTECTION = 60;
 
-const el = {
-  masked: document.getElementById("maskedWord"),
-  input: document.getElementById("answerInput"),
-  feedback: document.getElementById("feedback"),
-  timerBar: document.getElementById("timerBar"),
-  timeLeftLabel: document.getElementById("timeLeftLabel"),
-  stagePill: document.getElementById("stagePill"),
-  streakPill: document.getElementById("streakPill"),
-  scorePill: document.getElementById("scorePill"),
-  statCorrect: document.getElementById("statCorrect"),
-  statMistakes: document.getElementById("statMistakes"),
-  statAvg: document.getElementById("statAvg"),
-  btnStart: document.getElementById("btnStart"),
-  btnSubmit: document.getElementById("btnSubmit"),
-  btnSkip: document.getElementById("btnSkip"),
-  btnEnd: document.getElementById("btnEnd"),
-  leaderboardLink: document.getElementById("leaderboardLink"),
-  over: document.getElementById("gameOver"),
-  loseWord: document.getElementById("loseWord"),
-  loseDef: document.getElementById("loseDef"),
-  btnRestart: document.getElementById("btnRestart"),
-};
+    let playerName = "Player";
+    let isTeacher = false;
+    let isStudent = false;
 
-function stageProfile(stage){
-  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-  return {
-    minLen: clamp(3+Math.floor(stage/2),3,8),
-    maxLen: clamp(6+Math.floor(stage/1.5),6,14),
-    missing: clamp(1+Math.floor(stage/4),1,4),
-    hardness: clamp(stage/12,0,1)
-  };
-}
+    let sessionId = "";
+    let stage = START_STAGE;
+    let questionCount = 0;
+    let correctCount = 0;
+    let mistakesTotal = 0;
+    let totalTimeTrue = 0;
+    let penaltySeconds = 0;
+    let streak = 0;
+    let timeLeft = TIMER_SECONDS;
+    let rafId = 0;
+    let qStartTs = 0;
+    let runStartTs = 0;
+    let mistakesThisQuestion = 0;
+    let loggedThisQuestion = false;
+    let current = null;
+    let recentWords = [];
 
-function pickWord(profile){
-  const pool = WORDS.filter(w=>w.word.length>=profile.minLen && w.word.length<=profile.maxLen);
-  return pool[Math.floor(Math.random()*pool.length)];
-}
-function chooseMaskPositions(word,k,hardness){
-  const letters=[...word]; const vowels=new Set("aeiouy");
-  const scores=letters.map((ch,i)=>{let s=0;
-    if(vowels.has(ch)) s-=.3;
-    if((i===0||i===letters.length-1)) s+=(1-hardness)*1.2;
-    return {i,s};
-  }).sort((a,b)=>a.s-b.s);
-  const chosen=[];
-  for(const {i} of scores){if(chosen.length>=k)break;if(hardness<.5&&chosen.some(c=>Math.abs(c-i)<=1))continue;chosen.push(i);}
-  return chosen.sort((a,b)=>a-b);
-}
-function maskWord(word,idxs){const s=new Set(idxs);return[...word].map((ch,i)=>s.has(i)?"_":ch).join("");}
+    let runData = { sessionID: "", results: [] };
 
-function renderMasked(masked){return masked.split("").map(ch=>ch==="_"?"<span>&nbsp;</span>":`<b>${ch}</b>`).join(" ");}
+    let wordPool = [];
+    let wordsReady = false;
 
-function startGame(){
-  reset();
-  state.running=true; state.startTs=Date.now();
-  nextQuestion();
-  tick();
-}
-function reset(){
-  clearTimeout(state.timer);
-  state={running:false,timeLeft:START_TIME_SECONDS,stage:1,streak:0,score:0,correct:0,mistakes:0,answers:[],current:null,startTs:null,timer:null};
-  updateHud();
-  el.masked.innerHTML="<i class='sub'>Press Start to begin</i>";
-  el.feedback.textContent="";
-  setTimerUi();
-  el.over.classList.add("hidden");
-}
-function endGame(reason, failedWord){
-  state.running=false;
-  clearTimeout(state.timer);
-  el.feedback.textContent=`Session ended (${reason})`;
-  if(failedWord){
-    el.over.classList.remove("hidden");
-    el.loseWord.textContent=`Correct spelling: ${failedWord.word}`;
-    el.loseDef.textContent=failedWord.def ? failedWord.def : "(No definition found)";
-  }
-}
-function nextQuestion(){
-  const prof=stageProfile(state.stage);
-  const w=pickWord(prof); if(!w) return endGame("No words left");
-  const maskIdx=chooseMaskPositions(w.word,Math.min(prof.missing,w.word.length-1),prof.hardness);
-  const display=maskWord(w.word,maskIdx);
-  state.current={...w,display,maskIdx,stage:state.stage,startedAt:performance.now()};
-  el.masked.innerHTML=renderMasked(display);
-  el.input.value=""; el.input.focus();
-  el.feedback.textContent="";
-  updateHud();
-}
+    async function ensureWordsLoaded() {
+      if (wordsReady) return;
+      const response = await fetch(WORDS_URL);
+      if (!response.ok) throw new Error("Unable to load word list");
+      const raw = await response.json();
+      const seen = new Set();
+      wordPool = raw
+        .map(({ w, z }) => ({ word: (w || "").toLowerCase(), zipf: Number(z || 0) }))
+        .filter(entry => entry.word && /^[a-z]+$/.test(entry.word))
+        .filter(entry => {
+          if (seen.has(entry.word)) return false;
+          seen.add(entry.word);
+          return true;
+        })
+        .sort((a, b) => b.zipf - a.zipf);
+      wordsReady = true;
+      console.log(`Loaded ${wordPool.length} words for play.`);
+    }
 
-function submit(){
-  if(!state.running||!state.current)return;
-  const now=performance.now(); const t=now-state.current.startedAt;
-  const ans=el.input.value.trim().toLowerCase();
-  const correct=ans===state.current.word;
-  state.answers.push({word:state.current.word,ans,correct,time:t});
-  if(correct){
-    state.correct++; state.streak++; state.score+=10; addTime(CORRECT_BONUS);
-    el.feedback.textContent="✓ Correct!"; el.feedback.className="mono good";
-    if(state.streak%3===0) state.stage++;
-    nextQuestion();
-  } else {
-    state.mistakes++; state.streak=0; subtractTime(MISTAKE_PENALTY);
-    el.feedback.textContent="✗ Incorrect"; el.feedback.className="mono bad";
-  }
-  updateHud();
-}
-function skip(){ subtractTime(SKIP_PENALTY); nextQuestion(); }
+    function parseEmailToName(email) {
+      if (!email) return "Player";
+      const local = email.split("@")[0];
+      const parts = local.split(/[._-]+/).filter(Boolean);
+      const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+      if (parts.length >= 2) return parts.map(cap).join(" ");
+      return cap(local);
+    }
 
-function tick(){
-  if(!state.running)return;
-  state.timeLeft-=.1;
-  if(state.timeLeft<=0){
-    state.timeLeft=0; setTimerUi();
-    return endGame("Time up", state.current);
-  }
-  setTimerUi();
-  state.timer=setTimeout(tick,100);
-}
-function addTime(s){state.timeLeft=Math.min(START_TIME_SECONDS,state.timeLeft+s);setTimerUi();}
-function subtractTime(s){state.timeLeft=Math.max(0,state.timeLeft-s);setTimerUi();}
-function setTimerUi(){
-  const pct=Math.max(0,Math.min(100,(state.timeLeft/START_TIME_SECONDS)*100));
-  el.timerBar.style.width=pct+"%";
-  el.timeLeftLabel.textContent=state.timeLeft.toFixed(1)+"s";
-}
-function updateHud(){
-  el.stagePill.textContent=`Stage ${state.stage}`;
-  el.streakPill.textContent=`Streak ${state.streak}`;
-  el.scorePill.textContent=`Score ${state.score}`;
-  el.statCorrect.textContent=state.correct;
-  el.statMistakes.textContent=state.mistakes;
-  el.statAvg.textContent=state.answers.length?(state.answers.reduce((a,b)=>a+b.time,0)/state.answers.length/1000).toFixed(2)+"s":"—";
-}
+    function buildSessionID(name) {
+      const parts = (name || "Player").trim().split(/\s+/);
+      const first = parts[0] || "Player";
+      const last = parts[1] || "";
+      const now = new Date();
+      const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+      const mst = new Date(utcMs - 7 * 60 * 60000);
+      const mm = String(mst.getMonth() + 1).padStart(2, "0");
+      const dd = String(mst.getDate()).padStart(2, "0");
+      const yyyy = mst.getFullYear();
+      const hh = String(mst.getHours()).padStart(2, "0");
+      const min = String(mst.getMinutes()).padStart(2, "0");
+      return `${first} ${last} ${mm}-${dd}-${yyyy} ${hh}:${min}`;
+    }
 
-// events
-el.btnStart.onclick=startGame;
-el.btnEnd.onclick=()=>endGame("Manual end");
-el.btnSubmit.onclick=submit;
-el.btnSkip.onclick=skip;
-el.input.addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
-el.btnRestart.onclick=()=>{el.over.classList.add("hidden");startGame();};
+    function resetRunState() {
+      sessionId = buildSessionID(playerName);
+      runData = { sessionID: sessionId, results: [] };
+      stage = START_STAGE;
+      questionCount = 0;
+      correctCount = 0;
+      mistakesTotal = 0;
+      totalTimeTrue = 0;
+      penaltySeconds = 0;
+      streak = 0;
+      timeLeft = TIMER_SECONDS;
+      mistakesThisQuestion = 0;
+      loggedThisQuestion = false;
+      current = null;
+      recentWords = [];
+      cancelAnimationFrame(rafId);
+      updateStats();
+      feedbackEl.textContent = "";
+      feedbackEl.className = "";
+      stageInfo.textContent = "";
+      hintEl.textContent = "";
+    }
 
-loadWords().then(()=>reset());
-</script>
+    function stageWindow(stageValue) {
+      if (!wordPool.length) return { start: 0, end: 0 };
+      const normalized = Math.min(0.98, Math.max(0, (stageValue - 1) / 40));
+      const center = Math.floor(normalized * (wordPool.length - 1));
+      const windowSize = Math.max(220, Math.floor(wordPool.length * 0.0025 * (1 + normalized * 4)));
+      const half = Math.floor(windowSize / 2);
+      let start = Math.max(0, center - half);
+      let end = Math.min(wordPool.length - 1, start + windowSize);
+      if (end - start < windowSize) {
+        start = Math.max(0, end - windowSize);
+      }
+      return { start, end };
+    }
+
+    function chooseWord() {
+      const { start, end } = stageWindow(stage);
+      let guard = 0;
+      let candidate;
+      while (guard++ < 400) {
+        const idx = start + Math.floor(Math.random() * (end - start + 1));
+        candidate = wordPool[idx];
+        if (!candidate) continue;
+        if (!recentWords.includes(candidate.word)) break;
+      }
+      if (!candidate) candidate = wordPool[Math.floor(Math.random() * wordPool.length)];
+      recentWords.push(candidate.word);
+      if (recentWords.length > DUPLICATE_PROTECTION) recentWords.shift();
+      return candidate;
+    }
+
+    function buildMask(word, stageValue) {
+      const letters = word.split("");
+      const len = letters.length;
+      const indices = new Set([0, len - 1]);
+      const revealRatio = Math.max(0.18, 0.7 - stageValue * 0.02);
+      const revealCount = Math.min(len, Math.max(2, Math.round(len * revealRatio)));
+      while (indices.size < revealCount) {
+        const idx = Math.floor(Math.random() * len);
+        indices.add(idx);
+      }
+      const maskHtml = letters.map((ch, idx) => {
+        const span = document.createElement("span");
+        if (indices.has(idx)) {
+          span.textContent = ch.toUpperCase();
+          span.classList.add("revealed");
+        } else {
+          span.textContent = "";
+        }
+        return span;
+      });
+      const maskedString = letters.map((ch, idx) => indices.has(idx) ? ch : "_").join("");
+      return { maskHtml, maskIndices: indices, maskedString };
+    }
+
+    function renderMask(mask) {
+      questionEl.innerHTML = "";
+      mask.maskHtml.forEach(span => questionEl.appendChild(span));
+    }
+
+    function updateStats() {
+      statCorrect.textContent = correctCount;
+      statMistakes.textContent = mistakesTotal;
+      statStreak.textContent = streak;
+      if (questionCount > 0) {
+        const avg = totalTimeTrue / questionCount;
+        statAvg.textContent = `${avg.toFixed(2)}s`;
+      } else {
+        statAvg.textContent = "—";
+      }
+    }
+
+    function updateStageInfo(word, zipf, maskCount) {
+      const displayStage = `Stage ${stage}`;
+      const diff = zipf ? `• Zipf ${zipf.toFixed(2)}` : "";
+      const lengthHint = word ? `• ${word.length} letters` : "";
+      const revealHint = maskCount ? `• ${maskCount} letters shown` : "";
+      stageInfo.textContent = `${displayStage} ${diff} ${lengthHint} ${revealHint}`.trim();
+      hintEl.textContent = word ? "Type the full word. Revealed letters are shown in blue." : "";
+    }
+
+    function updateTimerVisual() {
+      const pct = Math.max(0, Math.min(1, timeLeft / TIMER_SECONDS));
+      timerFill.style.width = `${pct * 100}%`;
+    }
+
+    function scheduleTick() {
+      cancelAnimationFrame(rafId);
+      const tick = () => {
+        if (!current) return;
+        const elapsed = (performance.now() - qStartTs) / 1000;
+        const penalties = current.penaltySecondsThisQuestion || 0;
+        const remaining = TIMER_SECONDS - elapsed - penalties;
+        timeLeft = Math.max(0, remaining);
+        updateTimerVisual();
+        if (timeLeft <= 0) {
+          finalizeQuestion(false, { timeout: true });
+          return;
+        }
+        rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function applyPenalty() {
+      if (!current) return;
+      const attempt = Math.max(1, mistakesThisQuestion);
+      const penalty = BASE_PENALTY * Math.pow(PENALTY_MULT, attempt - 1);
+      current.penaltySecondsThisQuestion = (current.penaltySecondsThisQuestion || 0) + penalty;
+      penaltySeconds += penalty;
+      feedbackEl.textContent = `Incorrect - ${penalty.toFixed(1)}s penalty.`;
+      feedbackEl.className = "bad";
+      scheduleTick();
+    }
+
+    async function startGame() {
+      await ensureWordsLoaded();
+      resetRunState();
+      runStartTs = performance.now();
+      endScreen.style.display = "none";
+      gameContainer.style.display = "block";
+      loginScreen.style.display = "none";
+      await nextQuestion();
+    }
+
+    async function nextQuestion() {
+      await ensureWordsLoaded();
+      const choice = chooseWord();
+      if (!choice) {
+        feedbackEl.textContent = "No words available.";
+        feedbackEl.className = "bad";
+        return;
+      }
+      const mask = buildMask(choice.word, stage);
+      renderMask(mask);
+      current = {
+        word: choice.word,
+        zipf: choice.zipf,
+        mask,
+        penaltySecondsThisQuestion: 0
+      };
+      feedbackEl.textContent = "";
+      feedbackEl.className = "";
+      answerEl.value = "";
+      answerEl.focus();
+      mistakesThisQuestion = 0;
+      loggedThisQuestion = false;
+      timeLeft = TIMER_SECONDS;
+      qStartTs = performance.now();
+      updateStageInfo(choice.word, choice.zipf, mask.maskIndices.size);
+      scheduleTick();
+    }
+    function finalizeQuestion(success, { timeout = false, skipped = false } = {}) {
+      if (!current || loggedThisQuestion) return;
+      loggedThisQuestion = true;
+      cancelAnimationFrame(rafId);
+      const finished = current;
+      const elapsed = (performance.now() - qStartTs) / 1000;
+      totalTimeTrue += elapsed;
+      questionCount++;
+      mistakesTotal += mistakesThisQuestion + (success ? 0 : 1);
+
+      const record = {
+        word: finished.word,
+        masked: finished.mask.maskedString,
+        stage,
+        timeTaken: elapsed,
+        mistakes: mistakesThisQuestion,
+        success,
+        zipf: finished.zipf,
+        timeout,
+        skipped,
+        dateAdded: Date.now()
+      };
+      runData.results.push(record);
+
+      if (success) {
+        correctCount++;
+        streak++;
+        feedbackEl.textContent = `${finished.word.toUpperCase()} ✓`;
+        feedbackEl.className = "ok";
+      } else {
+        streak = 0;
+        if (timeout) {
+          feedbackEl.textContent = `Time ran out on ${finished.word.toUpperCase()}.`;
+          feedbackEl.className = "bad";
+        } else if (skipped) {
+          feedbackEl.textContent = `${finished.word.toUpperCase()} was skipped.`;
+          feedbackEl.className = "";
+        }
+      }
+
+      const newStage = START_STAGE + Math.floor(correctCount / STAGE_STEP);
+      if (newStage !== stage) stage = newStage;
+
+      current = null;
+      mistakesThisQuestion = 0;
+      updateStats();
+
+      if (success || skipped) {
+        setTimeout(() => nextQuestion(), 450);
+      } else if (timeout) {
+        gameOver();
+      }
+    }
+
+    function checkAnswer() {
+      if (!current || loggedThisQuestion) return;
+      const guess = answerEl.value.trim().toLowerCase();
+      if (!guess) return;
+      if (guess === current.word) {
+        finalizeQuestion(true);
+      } else {
+        mistakesThisQuestion++;
+        applyPenalty();
+        answerEl.select();
+      }
+    }
+
+    function gameOver() {
+      cancelAnimationFrame(rafId);
+      gameContainer.style.display = "none";
+      endScreen.style.display = "block";
+      const totalElapsed = (performance.now() - runStartTs) / 1000;
+      endSummary.textContent = `${playerName} spelled ${correctCount} word${correctCount === 1 ? "" : "s"}.`;
+      endTime.textContent = `Total time: ${totalElapsed.toFixed(2)}s (${(totalTimeTrue + penaltySeconds).toFixed(2)}s incl. penalties)`;
+      if (questionCount > 0) {
+        const avgTrue = totalTimeTrue / questionCount;
+        const avgWithPenalty = (totalTimeTrue + penaltySeconds) / questionCount;
+        endAvg.textContent = `Average per word: ${avgTrue.toFixed(2)}s (${avgWithPenalty.toFixed(2)}s with penalties)`;
+      } else {
+        endAvg.textContent = "";
+      }
+      endSession.textContent = `Session ID: ${sessionId}`;
+      savedStatus.textContent = "Saving…";
+      savedStatus.style.color = "";
+      uploadSession(totalElapsed).catch(err => {
+        console.error("Session upload failed", err);
+        savedStatus.textContent = "Failed to save session";
+        savedStatus.style.color = "var(--danger)";
+      });
+      lbWrap.style.display = "block";
+      lbWrap.classList.add("show");
+      loadLeaderboard(currentLeaderboardFilter, true).catch(err => console.error(err));
+    }
+
+    async function uploadSession(totalTrue) {
+      const payload = {
+        sessionID: sessionId,
+        playerName,
+        stageReached: stage,
+        totalTime: totalTrue,
+        penaltyTime: penaltySeconds,
+        wordsCorrect: correctCount,
+        wordsAttempted: questionCount,
+        mistakes: mistakesTotal,
+        dateAdded: Date.now(),
+        isTeacher,
+        isStudent
+      };
+
+      const answersArray = runData.results.map(r => ({
+        word: r.word,
+        masked: r.masked,
+        stage: r.stage,
+        timeTaken: r.timeTaken,
+        mistakes: r.mistakes,
+        success: r.success,
+        zipf: r.zipf,
+        timeout: r.timeout,
+        skipped: r.skipped,
+        dateAdded: r.dateAdded
+      }));
+
+      const sessionRef = doc(collection(db, "session_Spelling"), sessionId);
+      await setDoc(sessionRef, { ...payload, answers: answersArray }, { merge: false });
+      await addDoc(collection(db, "leaderboard_Spelling"), payload);
+      updateCachedLeaderboardWithNewScore(payload);
+      savedStatus.textContent = "Saved ✓";
+      savedStatus.style.color = "var(--success)";
+    }
+
+    let cachedLeaderboardData = null;
+    let lastLeaderboardFetchTime = 0;
+    const LEADERBOARD_CACHE_DURATION = 60000;
+    let currentLeaderboardFilter = "all";
+
+    function updateCachedLeaderboardWithNewScore(newEntry) {
+      if (!newEntry?.playerName) return;
+      if (!cachedLeaderboardData) cachedLeaderboardData = [];
+      const key = (newEntry.playerName || "").trim().toLowerCase();
+      const index = cachedLeaderboardData.findIndex(d => (d.playerName || "").trim().toLowerCase() === key);
+      if (index !== -1) {
+        const old = cachedLeaderboardData[index];
+        const isBetter =
+          newEntry.wordsCorrect > (old.wordsCorrect ?? 0) ||
+          (newEntry.wordsCorrect === old.wordsCorrect && newEntry.totalTime < (old.totalTime ?? Infinity));
+        if (isBetter) {
+          cachedLeaderboardData[index] = newEntry;
+        }
+      } else {
+        cachedLeaderboardData.push(newEntry);
+      }
+      cachedLeaderboardData.sort((a, b) => {
+        if (b.wordsCorrect === a.wordsCorrect) return a.totalTime - b.totalTime;
+        return b.wordsCorrect - a.wordsCorrect;
+      });
+      renderLeaderboard(applyLeaderboardFilter(cachedLeaderboardData, currentLeaderboardFilter));
+    }
+
+    function applyLeaderboardFilter(data, filter) {
+      if (!data) return [];
+      if (filter === "students") return data.filter(d => d.isStudent);
+      if (filter === "teachers") return data.filter(d => d.isTeacher);
+      return data;
+    }
+
+    function renderLeaderboard(rows) {
+      lbBody.innerHTML = "";
+      if (!rows?.length) {
+        lbStatus.textContent = "No scores yet.";
+        return;
+      }
+      lbStatus.textContent = "";
+      rows.slice(0, 100).forEach((row, idx) => {
+        const tr = document.createElement("tr");
+        const date = row.dateAdded ? new Date(row.dateAdded).toLocaleDateString() : "";
+        const words = Number(row.wordsCorrect ?? 0);
+        const totalTime = Number(row.totalTime ?? 0);
+        const timeDisplay = Number.isFinite(totalTime) ? totalTime.toFixed(2) : String(row.totalTime ?? "");
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>${row.playerName || "Player"}</td>
+          <td>${words}</td>
+          <td>${timeDisplay}</td>
+          <td>${date}</td>
+        `;
+        lbBody.appendChild(tr);
+      });
+    }
+
+    async function loadLeaderboard(filterType = "all", forceRefresh = false) {
+      currentLeaderboardFilter = filterType;
+      const now = Date.now();
+      if (!forceRefresh && cachedLeaderboardData && (now - lastLeaderboardFetchTime < LEADERBOARD_CACHE_DURATION)) {
+        renderLeaderboard(applyLeaderboardFilter(cachedLeaderboardData, filterType));
+        return;
+      }
+      lbStatus.textContent = "Loading leaderboard…";
+      const qy = query(
+        collection(db, "leaderboard_Spelling"),
+        orderBy("wordsCorrect", "desc"),
+        orderBy("totalTime", "asc"),
+        limit(500)
+      );
+      const snapshot = await getDocs(qy);
+      cachedLeaderboardData = snapshot.docs.map(doc => doc.data());
+      lastLeaderboardFetchTime = now;
+      renderLeaderboard(applyLeaderboardFilter(cachedLeaderboardData, filterType));
+    }
+
+    function setActiveButton(target) {
+      [viewAllBtn, viewStudentsBtn, viewTeachersBtn].forEach(btn => {
+        if (!btn) return;
+        btn.classList.toggle("active", btn === target);
+      });
+    }
+
+    submitBtn.addEventListener("click", () => checkAnswer());
+    skipBtn.addEventListener("click", () => {
+      if (!current || loggedThisQuestion) return;
+      penaltySeconds += SKIP_PENALTY;
+      finalizeQuestion(false, { skipped: true });
+    });
+    answerEl.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        checkAnswer();
+      }
+    });
+    restartBtn.addEventListener("click", () => {
+      startGame().catch(err => console.error(err));
+    });
+
+    viewAllBtn.addEventListener("click", () => {
+      setActiveButton(viewAllBtn);
+      loadLeaderboard("all").catch(err => console.error(err));
+    });
+    viewStudentsBtn.addEventListener("click", () => {
+      setActiveButton(viewStudentsBtn);
+      loadLeaderboard("students").catch(err => console.error(err));
+    });
+    viewTeachersBtn.addEventListener("click", () => {
+      setActiveButton(viewTeachersBtn);
+      loadLeaderboard("teachers").catch(err => console.error(err));
+    });
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        playerName = user.displayName || parseEmailToName(user.email);
+        const email = (user.email || "").toLowerCase();
+        if (email.endsWith("@fusionacademy.com")) {
+          isTeacher = true;
+          isStudent = false;
+        } else if (email.endsWith("@fusionacademy.me")) {
+          isStudent = true;
+          isTeacher = false;
+        } else {
+          isTeacher = false;
+          isStudent = false;
+        }
+        startGame().catch(err => console.error(err));
+      } else {
+        cancelAnimationFrame(rafId);
+        gameContainer.style.display = "none";
+        endScreen.style.display = "none";
+        loginScreen.style.display = "flex";
+      }
+    });
+
+    loginBtn.addEventListener("click", async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        playerName = user.displayName || parseEmailToName(user.email);
+        const email = (user.email || "").toLowerCase();
+        if (email.endsWith("@fusionacademy.com")) {
+          isTeacher = true;
+          isStudent = false;
+        } else if (email.endsWith("@fusionacademy.me")) {
+          isStudent = true;
+          isTeacher = false;
+        } else {
+          isTeacher = false;
+          isStudent = false;
+        }
+        startGame().catch(err => console.error(err));
+      } catch (err) {
+        console.error("Sign-in error", err);
+        loginStatus.textContent = `Sign-in failed: ${err?.message || err}`;
+      }
+    });
+  </script>
 </body>
 </html>

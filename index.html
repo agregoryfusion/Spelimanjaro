@@ -529,6 +529,9 @@
       const effectiveMaxHidden = Math.min(MAX_HIDDEN_LETTERS, len - indices.size);
       const hiddenCount = Math.min(effectiveMaxHidden, Math.max(MIN_HIDDEN_LETTERS, desiredMissing));
       const revealCount = Math.max(indices.size, len - hiddenCount);
+      const revealRatio = Math.max(0.18, 0.7 - stageValue * 0.02);
+      const maxReveal = len - MIN_HIDDEN_LETTERS;
+      const revealCount = Math.min(maxReveal, Math.max(2, Math.round(len * revealRatio)));
       while (indices.size < revealCount) {
         const idx = Math.floor(Math.random() * len);
         indices.add(idx);
@@ -730,6 +733,8 @@
       const lettersOnly = answerEl.value.replace(/[^a-zA-Z]/g, "");
       if (lettersOnly.length !== current.word.length) return;
       const guess = lettersOnly.toLowerCase();
+      const guess = answerEl.value.trim().toLowerCase();
+      if (!guess) return;
       const isValid = (current.validSolutions && current.validSolutions.has(guess)) || guess === current.word;
       if (isValid) {
         current.acceptedWord = guess;

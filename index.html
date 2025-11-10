@@ -362,6 +362,9 @@
     let wordPool = [];
     let wordsReady = false;
 
+    const MIN_WORD_LENGTH = 4;
+    const MIN_HIDDEN_LETTERS = 1;
+
     async function ensureWordsLoaded() {
       if (wordsReady) return;
       const response = await fetch(WORDS_URL);
@@ -371,6 +374,7 @@
       wordPool = raw
         .map(({ w, z }) => ({ word: (w || "").toLowerCase(), zipf: Number(z || 0) }))
         .filter(entry => entry.word && /^[a-z]+$/.test(entry.word))
+        .filter(entry => entry.word.length >= MIN_WORD_LENGTH)
         .filter(entry => {
           if (seen.has(entry.word)) return false;
           seen.add(entry.word);
@@ -463,7 +467,8 @@
       const len = letters.length;
       const indices = new Set([0, len - 1]);
       const revealRatio = Math.max(0.18, 0.7 - stageValue * 0.02);
-      const revealCount = Math.min(len, Math.max(2, Math.round(len * revealRatio)));
+      const maxReveal = len - MIN_HIDDEN_LETTERS;
+      const revealCount = Math.min(maxReveal, Math.max(2, Math.round(len * revealRatio)));
       while (indices.size < revealCount) {
         const idx = Math.floor(Math.random() * len);
         indices.add(idx);
@@ -480,6 +485,14 @@
       });
       const maskedString = letters.map((ch, idx) => indices.has(idx) ? ch : "_").join("");
       return { maskHtml, maskIndices: indices, maskedString };
+    }
+
+    function matchingWordsForMask(baseWord, mask) {
+      const requiredIndices = [...mask.maskIndices];
+      const length = baseWord.length;
+      return wordPool
+        .filter(entry => entry.word.length === length)
+        .filter(entry => requiredIndices.every(idx => entry.word[idx] === baseWord[idx]));
     }
 
     function renderMask(mask) {
@@ -561,11 +574,14 @@
         return;
       }
       const mask = buildMask(choice.word, stage);
+      const validSolutions = matchingWordsForMask(choice.word, mask).map(entry => entry.word);
       renderMask(mask);
       current = {
         word: choice.word,
         zipf: choice.zipf,
         mask,
+        validSolutions: new Set(validSolutions),
+        acceptedWord: null,
         penaltySecondsThisQuestion: 0
       };
       feedbackEl.textContent = "";
@@ -584,6 +600,7 @@
       loggedThisQuestion = true;
       cancelAnimationFrame(rafId);
       const finished = current;
+      const solvedWord = finished.acceptedWord || finished.word;
       const elapsed = (performance.now() - qStartTs) / 1000;
       totalTimeTrue += elapsed;
       questionCount++;
@@ -591,6 +608,7 @@
 
       const record = {
         word: finished.word,
+        answeredAs: solvedWord,
         masked: finished.mask.maskedString,
         stage,
         timeTaken: elapsed,
@@ -606,7 +624,7 @@
       if (success) {
         correctCount++;
         streak++;
-        feedbackEl.textContent = `${finished.word.toUpperCase()} ✓`;
+        feedbackEl.textContent = `${solvedWord.toUpperCase()} ✓`;
         feedbackEl.className = "ok";
       } else {
         streak = 0;
@@ -637,7 +655,9 @@
       if (!current || loggedThisQuestion) return;
       const guess = answerEl.value.trim().toLowerCase();
       if (!guess) return;
-      if (guess === current.word) {
+      const isValid = (current.validSolutions && current.validSolutions.has(guess)) || guess === current.word;
+      if (isValid) {
+        current.acceptedWord = guess;
         finalizeQuestion(true);
       } else {
         mistakesThisQuestion++;
@@ -690,6 +710,7 @@
 
       const answersArray = runData.results.map(r => ({
         word: r.word,
+        answeredAs: r.answeredAs,
         masked: r.masked,
         stage: r.stage,
         timeTaken: r.timeTaken,

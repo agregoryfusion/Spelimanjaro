@@ -802,6 +802,13 @@
       const blanks = current.blankIndices;
       if (!blanks || !blanks.length) {
         current.acceptedWord = current.word;
+      const raw = answerEl.value;
+      const lettersOnly = raw.replace(/[^a-zA-Z]/g, "");
+      if (lettersOnly.length !== current.word.length) return;
+      const guess = lettersOnly.toLowerCase();
+      const isValid = (current.validSolutions && current.validSolutions.has(guess)) || guess === current.word;
+      if (isValid) {
+        current.acceptedWord = guess;
         finalizeQuestion(true);
         return;
       }

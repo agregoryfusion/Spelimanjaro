@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Spelimanjaro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f1220;
+      --card: #171a2b;
+      --ink: #e8ecff;
+      --muted: #9aa3c7;
+      --accent: #6ea8fe;
+      --good: #4ade80;
+      --bad: #f87171;
+      --warn: #fbbf24;
+    }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1000px 1000px at 10% 0%, #121634, #0b0e1a);
+      color: var(--ink);
+      display: grid; place-items: center;
+    }
+    .wrap { width: min(960px, 92vw); }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .topbar { justify-content: space-between; margin-bottom: 14px; }
+    .card {
+      background: var(--card); border-radius: 14px; padding: 16px 18px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    h1 { font-size: 26px; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 14px; }
+    .timer {
+      height: 14px; background: #121528; border-radius: 999px; overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+    .timer > .bar {
+      height: 100%; width: 100%;
+      background: linear-gradient(90deg, var(--good), var(--accent));
+      transition: width .2s ease-out;
+    }
+    .big {
+      font-size: clamp(28px, 6vw, 48px);
+      letter-spacing: 2px; text-align: center;
+      padding: 24px 12px; margin: 10px 0;
+      border-radius: 12px; background: #121528;
+      user-select: none;
+    }
+    .masked span { display: inline-block; min-width: 0.75ch; border-bottom: 2px dashed rgba(255,255,255,.18); }
+    input[type="text"] {
+      width: 100%; padding: 16px 14px; border-radius: 10px; font-size: 20px;
+      border: 1px solid rgba(255,255,255,.08); background: #0d1022; color: var(--ink);
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: rgba(110,168,254,.6); box-shadow: 0 0 0 4px rgba(110,168,254,.15);
+    }
+    .btn {
+      padding: 10px 14px; border-radius: 10px; border: 0; color: white; background: var(--accent);
+      font-weight: 600; cursor: pointer;
+    }
+    .btn.secondary { background: #2a2f52; }
+    .btn.danger { background: var(--bad); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas; }
+    .pill { background: #121528; border-radius: 999px; padding: 6px 10px; font-size: 12px; color: var(--muted); }
+    .stat { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 14px; }
+    .stat b { color: var(--ink); }
+    .footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 8px; }
+    .good { color: var(--good); }
+    .bad { color: var(--bad); }
+    .warn { color: var(--warn); }
+    #gameOver {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+    }
+    #gameOver .panel {
+      background: var(--card); padding: 24px 28px;
+      border-radius: 12px; text-align: center;
+      width: min(400px, 90vw);
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="row topbar">
+    <div>
+      <h1>Spelimanjaro</h1>
+      <div class="sub">Climb the mountain of Spelling</div>
+      <div class="sub">v1.0.1</div>
+    </div>
+    <div class="row">
+      <span class="pill mono" id="stagePill">Stage 1</span>
+      <span class="pill mono" id="streakPill">Streak 0</span>
+      <span class="pill mono" id="scorePill">Score 0</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="gap:14px; align-items:center; margin-bottom:8px;">
+      <div style="flex:1">
+        <div class="timer"><div class="bar" id="timerBar"></div></div>
+      </div>
+      <div class="mono" id="timeLeftLabel">60.0s</div>
+    </div>
+
+    <div class="big masked" id="maskedWord">_ _ _ _</div>
+
+    <div class="grid">
+      <div class="card" style="background:#0f1330">
+        <div class="sub" style="margin-bottom:6px;">Type the missing letters</div>
+        <input id="answerInput" type="text" autocomplete="off" placeholder="type full word…" />
+        <div class="row" style="margin-top:10px; justify-content: space-between;">
+          <div class="sub"><span id="feedback" class="mono"></span></div>
+          <div class="row">
+            <button class="btn" id="btnSubmit">Submit</button>
+            <button class="btn secondary" id="btnSkip">Skip (-3s)</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background:#0f1330">
+        <div class="stat">
+          <div>Correct:</div><b id="statCorrect">0</b>
+          <div>Mistakes:</div><b id="statMistakes">0</b>
+          <div>Average time:</div><b id="statAvg">—</b>
+          <div>Leaderboard:</div><b><span id="leaderboardLink" class="sub">Leaderboard Spelimanjaro</span></b>
+        </div>
+        <div class="row" style="margin-top:10px; justify-content: space-between;">
+          <div class="row">
+            <button class="btn" id="btnStart">Start</button>
+            <button class="btn danger" id="btnEnd">End</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">Keys saved as <b>Session Spelimanjaro</b> and <b>Leaderboard Spelimanjaro</b></div>
+</div>
+
+<div id="gameOver" class="hidden">
+  <div class="panel">
+    <h2>Game Over!</h2>
+    <p id="loseWord"></p>
+    <p id="loseDef" class="sub"></p>
+    <button class="btn" id="btnRestart">Play Again</button>
+  </div>
+</div>
+
+<script>
+let WORDS = []; // { word, definition }
+async function loadWords() {
+  const res = await fetch("words.csv");
+  const text = await res.text();
+  const lines = text.split("\n").filter(x=>x.trim().length>0);
+  WORDS = lines.map(l=>{
+    const [w, def] = l.split(/,(.+)/); // split only on first comma
+    return { word:w.trim().toLowerCase(), def:(def||"").trim() };
+  }).filter(x=>x.word && /^[a-z]+$/.test(x.word));
+  console.log("Loaded", WORDS.length, "words");
+}
+
+const START_TIME_SECONDS = 60;
+const CORRECT_BONUS = 1.5;
+const MISTAKE_PENALTY = 3.0;
+const SKIP_PENALTY = 3.0;
+
+let state = {
+  running:false, timeLeft:START_TIME_SECONDS,
+  stage:1, streak:0, score:0, correct:0, mistakes:0,
+  answers:[], current:null, startTs:null, timer:null
+};
+
+const el = {
+  masked: document.getElementById("maskedWord"),
+  input: document.getElementById("answerInput"),
+  feedback: document.getElementById("feedback"),
+  timerBar: document.getElementById("timerBar"),
+  timeLeftLabel: document.getElementById("timeLeftLabel"),
+  stagePill: document.getElementById("stagePill"),
+  streakPill: document.getElementById("streakPill"),
+  scorePill: document.getElementById("scorePill"),
+  statCorrect: document.getElementById("statCorrect"),
+  statMistakes: document.getElementById("statMistakes"),
+  statAvg: document.getElementById("statAvg"),
+  btnStart: document.getElementById("btnStart"),
+  btnSubmit: document.getElementById("btnSubmit"),
+  btnSkip: document.getElementById("btnSkip"),
+  btnEnd: document.getElementById("btnEnd"),
+  leaderboardLink: document.getElementById("leaderboardLink"),
+  over: document.getElementById("gameOver"),
+  loseWord: document.getElementById("loseWord"),
+  loseDef: document.getElementById("loseDef"),
+  btnRestart: document.getElementById("btnRestart"),
+};
+
+function stageProfile(stage){
+  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+  return {
+    minLen: clamp(3+Math.floor(stage/2),3,8),
+    maxLen: clamp(6+Math.floor(stage/1.5),6,14),
+    missing: clamp(1+Math.floor(stage/4),1,4),
+    hardness: clamp(stage/12,0,1)
+  };
+}
+
+function pickWord(profile){
+  const pool = WORDS.filter(w=>w.word.length>=profile.minLen && w.word.length<=profile.maxLen);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+function chooseMaskPositions(word,k,hardness){
+  const letters=[...word]; const vowels=new Set("aeiouy");
+  const scores=letters.map((ch,i)=>{let s=0;
+    if(vowels.has(ch)) s-=.3;
+    if((i===0||i===letters.length-1)) s+=(1-hardness)*1.2;
+    return {i,s};
+  }).sort((a,b)=>a.s-b.s);
+  const chosen=[];
+  for(const {i} of scores){if(chosen.length>=k)break;if(hardness<.5&&chosen.some(c=>Math.abs(c-i)<=1))continue;chosen.push(i);}
+  return chosen.sort((a,b)=>a-b);
+}
+function maskWord(word,idxs){const s=new Set(idxs);return[...word].map((ch,i)=>s.has(i)?"_":ch).join("");}
+
+function renderMasked(masked){return masked.split("").map(ch=>ch==="_"?"<span>&nbsp;</span>":`<b>${ch}</b>`).join(" ");}
+
+function startGame(){
+  reset();
+  state.running=true; state.startTs=Date.now();
+  nextQuestion();
+  tick();
+}
+function reset(){
+  clearTimeout(state.timer);
+  state={running:false,timeLeft:START_TIME_SECONDS,stage:1,streak:0,score:0,correct:0,mistakes:0,answers:[],current:null,startTs:null,timer:null};
+  updateHud();
+  el.masked.innerHTML="<i class='sub'>Press Start to begin</i>";
+  el.feedback.textContent="";
+  setTimerUi();
+  el.over.classList.add("hidden");
+}
+function endGame(reason, failedWord){
+  state.running=false;
+  clearTimeout(state.timer);
+  el.feedback.textContent=`Session ended (${reason})`;
+  if(failedWord){
+    el.over.classList.remove("hidden");
+    el.loseWord.textContent=`Correct spelling: ${failedWord.word}`;
+    el.loseDef.textContent=failedWord.def ? failedWord.def : "(No definition found)";
+  }
+}
+function nextQuestion(){
+  const prof=stageProfile(state.stage);
+  const w=pickWord(prof); if(!w) return endGame("No words left");
+  const maskIdx=chooseMaskPositions(w.word,Math.min(prof.missing,w.word.length-1),prof.hardness);
+  const display=maskWord(w.word,maskIdx);
+  state.current={...w,display,maskIdx,stage:state.stage,startedAt:performance.now()};
+  el.masked.innerHTML=renderMasked(display);
+  el.input.value=""; el.input.focus();
+  el.feedback.textContent="";
+  updateHud();
+}
+
+function submit(){
+  if(!state.running||!state.current)return;
+  const now=performance.now(); const t=now-state.current.startedAt;
+  const ans=el.input.value.trim().toLowerCase();
+  const correct=ans===state.current.word;
+  state.answers.push({word:state.current.word,ans,correct,time:t});
+  if(correct){
+    state.correct++; state.streak++; state.score+=10; addTime(CORRECT_BONUS);
+    el.feedback.textContent="✓ Correct!"; el.feedback.className="mono good";
+    if(state.streak%3===0) state.stage++;
+    nextQuestion();
+  } else {
+    state.mistakes++; state.streak=0; subtractTime(MISTAKE_PENALTY);
+    el.feedback.textContent="✗ Incorrect"; el.feedback.className="mono bad";
+  }
+  updateHud();
+}
+function skip(){ subtractTime(SKIP_PENALTY); nextQuestion(); }
+
+function tick(){
+  if(!state.running)return;
+  state.timeLeft-=.1;
+  if(state.timeLeft<=0){
+    state.timeLeft=0; setTimerUi();
+    return endGame("Time up", state.current);
+  }
+  setTimerUi();
+  state.timer=setTimeout(tick,100);
+}
+function addTime(s){state.timeLeft=Math.min(START_TIME_SECONDS,state.timeLeft+s);setTimerUi();}
+function subtractTime(s){state.timeLeft=Math.max(0,state.timeLeft-s);setTimerUi();}
+function setTimerUi(){
+  const pct=Math.max(0,Math.min(100,(state.timeLeft/START_TIME_SECONDS)*100));
+  el.timerBar.style.width=pct+"%";
+  el.timeLeftLabel.textContent=state.timeLeft.toFixed(1)+"s";
+}
+function updateHud(){
+  el.stagePill.textContent=`Stage ${state.stage}`;
+  el.streakPill.textContent=`Streak ${state.streak}`;
+  el.scorePill.textContent=`Score ${state.score}`;
+  el.statCorrect.textContent=state.correct;
+  el.statMistakes.textContent=state.mistakes;
+  el.statAvg.textContent=state.answers.length?(state.answers.reduce((a,b)=>a+b.time,0)/state.answers.length/1000).toFixed(2)+"s":"—";
+}
+
+// events
+el.btnStart.onclick=startGame;
+el.btnEnd.onclick=()=>endGame("Manual end");
+el.btnSubmit.onclick=submit;
+el.btnSkip.onclick=skip;
+el.input.addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
+el.btnRestart.onclick=()=>{el.over.classList.add("hidden");startGame();};
+
+loadWords().then(()=>reset());
+</script>
+</body>
+</html>
